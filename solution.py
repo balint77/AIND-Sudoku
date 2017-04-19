@@ -1,3 +1,5 @@
+from collections import Counter
+
 assignments = []
 
 rows = 'ABCDEFGHI'
@@ -30,6 +32,15 @@ def assign_value(values, box, value):
         assignments.append(values.copy())
     return values
 
+
+def clearTwinsFromUnit(twins, unit, values):
+    """removes the two values of the twins from all the other boxes in the unit"""
+    for box in unit:
+        value = values[box]
+        if value != twins:
+            values[box] = value.replace(twins[0], "").replace(twins[1], "")
+    return values
+
 def naked_twins(values):
     """Eliminate values using the naked twins strategy.
     Args:
@@ -38,13 +49,23 @@ def naked_twins(values):
     Returns:
         the values dictionary with the naked twins eliminated from peers.
     """
-
-    # Find all instances of naked twins
-    # Eliminate the naked twins as possibilities for their peers
-
-    """for b in boxes:
-        if len(values[b]) == 2:
-            for p in peers"""
+    potentialTwins = Counter()
+    for unit in unitlist:
+        #print("checking:", unitToString(unit, values))
+        #lets oount how many boxes we have with two values in the actual unit
+        potentialTwins.clear()
+        for box in unit:
+            value = values[box]
+            if len(value) == 2:
+                potentialTwins[value] += 1
+        #now lets see if we have 2+ boxes with the same two values in it
+        for content, count in potentialTwins.items():
+            if count > 1:
+                #print("twin found:",content)
+                #we have found a twin, lets clear its value from all the other boxes in the unit
+                values = clearTwinsFromUnit(content, unit, values)
+                #print("  result:", unitToString(unit, values))
+    return values
 
 def grid_values(grid):
     """
@@ -71,6 +92,12 @@ def display(values):
                       for c in cols))
         if r in 'CF': print(line)
     return
+
+def unitToString(unit, values):
+    str = ""
+    for box in unit:
+        str = str + box + ":" + values[box] + ","
+    return str
 
 def removeIt(v, bs, values):
     for b in bs:
@@ -175,7 +202,7 @@ def solve(grid):
         The dictionary representation of the final sudoku grid. False if no solution exists.
     """
     values = search(grid_values(grid))
-    display(values)
+    #display(values)
     return values
 
 if __name__ == '__main__':
