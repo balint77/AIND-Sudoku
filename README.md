@@ -3,11 +3,18 @@
 
 # Question 1 (Naked Twins)
 Q: How do we use constraint propagation to solve the naked twins problem?  
-A: *Student should provide answer here*
+A: We consider two boxes Naked Twins if they belong to the same unit and they both have same two possible values in the
+actual state of our sudoku problem. This condition is what we call the constraint. Now if any of those two values appear
+in other boxes in the same unit we can remove that value from those boxes. This reduces the number of options for those boxes
+so we can try to reapply the whole idea again potentially reducing the search space more and more. This is what we call
+propagation as applying the constraint has a spreading effect on other boxes like in a chain reaction.
 
 # Question 2 (Diagonal Sudoku)
 Q: How do we use constraint propagation to solve the diagonal sudoku problem?  
-A: *Student should provide answer here*
+A: The diagonal rule says that no values can repeat in each of the two diagonals of the sudoku board. This is a new constraint
+that can potentially reduce the number of options for the boxes in the diagonals. As we reduce options in the diagonal boxes
+that has an onward effect on possible values for other boxes on the sudoku board as well. This spreading effect is the propagation
+of the new constraint that we have introduced.
 
 ### Install
 

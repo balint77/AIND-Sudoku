@@ -5,17 +5,24 @@ assignments = []
 rows = 'ABCDEFGHI'
 cols = '123456789'
 
+
 def cross(a, b):
     return [s + t for s in a for t in b]
+
 
 boxes = cross(rows, cols)
 
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
 square_units = [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI') for cs in ('123', '456', '789')]
-unitlist = row_units + column_units + square_units
+# diagonal_units contains the two diagonal units
+diagonal_units = [[rows[i] + cols[i] for i in range(len(cols))],
+                  [rows[i] + cols[len(cols) - 1 - i] for i in range(len(cols))]]
+# unitlist is all of the units including the diagonal ones
+unitlist = row_units + column_units + square_units + diagonal_units
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
 peers = dict((s, set(sum(units[s], [])) - set([s])) for s in boxes)
+
 
 def assign_value(values, box, value):
     """
@@ -33,13 +40,15 @@ def assign_value(values, box, value):
     return values
 
 
-def clearTwinsFromUnit(twins, unit, values):
+def removeTwinValuesFromUnit(twins, unit, values):
     """removes the two values of the twins from all the other boxes in the unit"""
     for box in unit:
         value = values[box]
         if value != twins:
+            #dont touch the twins themselves
             values[box] = value.replace(twins[0], "").replace(twins[1], "")
     return values
+
 
 def naked_twins(values):
     """Eliminate values using the naked twins strategy.
@@ -51,20 +60,20 @@ def naked_twins(values):
     """
     potentialTwins = Counter()
     for unit in unitlist:
-        #print("checking:", unitToString(unit, values))
-        #lets oount how many boxes we have with two values in the actual unit
+        #lets count how many boxes we have with two values in the actual unit
+        #potentialTwins keeps track from which value pairs how many we have in the unit
         potentialTwins.clear()
         for box in unit:
             value = values[box]
             if len(value) == 2:
                 potentialTwins[value] += 1
-        #now lets see if we have 2+ boxes with the same two values in it
+        # now lets see if we have 2+ boxes with the same value pair in it
         for content, count in potentialTwins.items():
             if count > 1:
-                #print("twin found:",content)
-                #we have found a twin, lets clear its value from all the other boxes in the unit
-                values = clearTwinsFromUnit(content, unit, values)
-                #print("  result:", unitToString(unit, values))
+                # we have found a twin, lets clear its value from all the other boxes in the unit
+                # note: if count is 3+ the sudoku is not solveable but that is a responsiblity of another method
+                # to take care of
+                values = removeTwinValuesFromUnit(content, unit, values)
     return values
 
 def grid_values(grid):
@@ -78,6 +87,7 @@ def grid_values(grid):
             Values: The value in each box, e.g., '8'. If the box has no value, then the value will be '123456789'.
     """
     return dict((v, cols if grid[k] == '.' else grid[k]) for k, v in enumerate(boxes))
+
 
 def display(values):
     """
@@ -93,18 +103,13 @@ def display(values):
         if r in 'CF': print(line)
     return
 
-def unitToString(unit, values):
-    str = ""
-    for box in unit:
-        str = str + box + ":" + values[box] + ","
-    return str
+def removeIt(valueToRemove, boxes, values):
+    """ removes a given value from a set of boxes's """
+    for box in boxes:
+        boxValue = values[box]
+        if valueToRemove in boxValue:
+            values[box] = boxValue.replace(valueToRemove, "")
 
-def removeIt(v, bs, values):
-    for b in bs:
-        bv = values[b]
-        if v in bv:
-            values[b] = bv.replace(v,"")
-            #print(b,bv,values[b])
 
 def eliminate(values):
     """Eliminate values from peers of each box with a single value.
@@ -117,12 +122,11 @@ def eliminate(values):
     Returns:
         Resulting Sudoku in dictionary form after eliminating values.
     """
-    for k,v in values.items():
+    for k, v in values.items():
         if len(v) == 1:
-            #print(k,v)
-            #print(peers[k])
             removeIt(v, peers[k], values)
     return values
+
 
 def only_choice(values):
     """Finalize all values that are the only choice for a unit.
@@ -140,16 +144,19 @@ def only_choice(values):
                 values[dplaces[0]] = digit
     return values
 
+
 def reduce_puzzle(values):
     stalled = False
     while not stalled:
         # Check how many boxes have a determined value
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
 
-        # Your code here: Use the Eliminate Strategy
+        # Use the Eliminate Strategy
         values = eliminate(values)
-        # Your code here: Use the Only Choice Strategy
+        # Use the Only Choice Strategy
         values = only_choice(values)
+        # Use the Naked Twins Strategy
+        values = naked_twins(values)
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
         if (solved_values_after == 81):
@@ -161,33 +168,35 @@ def reduce_puzzle(values):
             return False
     return values
 
+
 def search(values):
-    #display(values)
+    # display(values)
     "Using depth-first search and propagation, create a search tree and solve the sudoku."
     # First, reduce the puzzle using the previous function
     values = reduce_puzzle(values)
     if values == False:
-        #print("dead end")
+        # dead end
         return values
     # Choose one of the unfilled squares with the fewest possibilities
     minLen = 10
     minBox = None
-    for k,v in values.items():
+    for k, v in values.items():
         myLen = len(v)
         if myLen > 1 and myLen < minLen:
             minLen = myLen
             minBox = k
     if minBox == None:
-        #print("!!!Solved!!!")
+        # sudoku solved, no box with more than one value
         return values
-    #print("iterating", minBox, values[minBox])
     variations = values[minBox]
     for c in variations:
-        #print("testing", c)
+        #choose next option for actual box
         valuesNew = dict(values)
         valuesNew[minBox] = c
+        #go deeper in search tree
         valuesNew = search(valuesNew)
         if valuesNew != False:
+            #sudoku solved no need to iterate further
             return valuesNew
     return False
 
@@ -201,16 +210,19 @@ def solve(grid):
     Returns:
         The dictionary representation of the final sudoku grid. False if no solution exists.
     """
+    # to solve a diagonal sudoku see the diagonal_units variable added to the units that are taken into consideration
     values = search(grid_values(grid))
-    #display(values)
     return values
 
-if __name__ == '__main__':
-    diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
-    display(solve(diag_sudoku_grid))
 
+if __name__ == '__main__':
+    #diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
+    diag_sudoku_grid = '......8.68.........7..863.....8............8..8.5.9...1.8..............8.....8.4.'
+    display(grid_values(diag_sudoku_grid))
+    display(solve(diag_sudoku_grid))
     try:
         from visualize import visualize_assignments
+
         visualize_assignments(assignments)
 
     except SystemExit:
